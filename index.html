@@ -1,0 +1,398 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Каталог</title>
+
+<style>
+body {
+  margin:0;
+  font-family: Arial, sans-serif;
+  background:#f5f5f5;
+}
+
+/* HEADER */
+.header {
+  display:flex;
+  justify-content:space-between;
+  padding:15px;
+  background:white;
+}
+
+/* GRID */
+.grid {
+  display:grid;
+  grid-template-columns:repeat(auto-fill,minmax(220px,1fr));
+  gap:20px;
+  padding:20px;
+}
+
+/* CARD */
+.card {
+  background:white;
+  border-radius:12px;
+  overflow:hidden;
+  position:relative;
+  box-shadow:0 4px 10px rgba(0,0,0,0.05);
+  transition:0.2s;
+}
+
+.card:hover {
+  transform:translateY(-3px);
+}
+
+.card img {
+  width:100%;
+  height:140px;
+  object-fit:cover;
+}
+
+.card-body {
+  padding:12px;
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+}
+
+.price { font-weight:bold; }
+
+/* FAVORITE */
+.fav {
+  position:absolute;
+  right:10px;
+  top:10px;
+  cursor:pointer;
+  font-size:20px;
+}
+
+/* BUTTON */
+.btn {
+  padding:10px;
+  width:100%;
+  border:none;
+  border-radius:8px;
+  background:black;
+  color:white;
+  cursor:pointer;
+  transition:0.2s;
+}
+
+.btn.added {
+  background:#2ecc71;
+}
+
+/* MODAL */
+.modal {
+  position:fixed;
+  right:0;
+  top:0;
+  width:360px;
+  height:100%;
+  background:white;
+  transform:translateX(100%);
+  transition:0.3s;
+  display:flex;
+  flex-direction:column;
+}
+
+.modal.open { transform:translateX(0); }
+
+.modal-body {
+  flex:1;
+  padding:15px;
+  overflow:auto;
+}
+
+/* CART ITEM */
+.cart-item {
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  margin-bottom:10px;
+}
+
+/* CONTROLS */
+.controls {
+  display:flex;
+  gap:10px;
+  background:#f6f6f6;
+  padding:4px;
+  border-radius:999px;
+}
+
+.controls button {
+  width:32px;
+  height:32px;
+  border-radius:50%;
+  border:1px solid #ddd;
+  background:white;
+  cursor:pointer;
+  font-size:18px;
+  font-weight:bold;
+}
+
+.controls button:first-child { color:#e74c3c; }
+.controls button:last-child { color:#2ecc71; }
+
+/* FOOTER */
+.cart-footer {
+  padding:15px;
+  border-top:1px solid #eee;
+}
+
+.total {
+  margin-bottom:10px;
+  font-weight:bold;
+}
+
+input {
+  width:100%;
+  padding:10px;
+  margin-bottom:10px;
+}
+
+/* OVERLAY */
+.overlay {
+  position:fixed;
+  inset:0;
+  background:rgba(0,0,0,0.4);
+  opacity:0;
+  pointer-events:none;
+}
+
+.overlay.open {
+  opacity:1;
+  pointer-events:all;
+}
+</style>
+</head>
+
+<body>
+
+<header class="header">
+  <b>MyShop</b>
+  <div>
+    <button id="favBtn">❤️</button>
+    <button id="cartBtn">🛒 <span id="count">0</span></button>
+  </div>
+</header>
+
+<div class="grid" id="catalog"></div>
+
+<div class="overlay" id="overlay"></div>
+
+<!-- CART -->
+<div class="modal" id="cartModal">
+  <div class="modal-body" id="cartItems"></div>
+  <div class="cart-footer">
+    <div class="total" id="total">Итого: 0 ₽</div>
+    <button id="checkoutBtn">Оформить заказ</button>
+  </div>
+</div>
+
+<!-- FAVORITES -->
+<div class="modal" id="favModal">
+  <div class="modal-body" id="favItems"></div>
+</div>
+
+<!-- CHECKOUT -->
+<div class="modal" id="checkoutModal">
+  <div class="modal-body">
+    <h3>Оформление заказа</h3>
+    <input id="name" placeholder="Имя">
+    <input id="phone" placeholder="Телефон">
+    <input id="address" placeholder="Адрес">
+    <div id="finalTotal"></div>
+    <button id="submitOrder">Подтвердить</button>
+  </div>
+</div>
+
+<script>
+const cart = [];
+const favorites = [];
+
+const products = [
+{id:1,name:"Кроссовки Nike Air",price:5990,img:"https://images.unsplash.com/photo-1542291026-7eec264c27ff"},
+{id:2,name:"Куртка зимняя",price:8990,img:"https://images.unsplash.com/photo-1602810318383-e386cc2a3ccf"},
+{id:3,name:"Смартфон",price:29990,img:"https://images.unsplash.com/photo-1511707171634-5f897ff02aa9"},
+{id:4,name:"Ноутбук",price:55990,img:"https://images.unsplash.com/photo-1517336714731-489689fd1ca8"},
+{id:5,name:"Часы",price:4990,img:"https://images.unsplash.com/photo-1523275335684-37898b6baf30"},
+{id:6,name:"Наушники",price:6990,img:"https://images.unsplash.com/photo-1518441310544-6b13c8f6f7f9"},
+{id:7,name:"Рюкзак",price:3490,img:"https://images.unsplash.com/photo-1553062407-98eeb64c6a62"},
+{id:8,name:"Очки",price:1990,img:"https://images.unsplash.com/photo-1509695507497-903c140c43b0"},
+{id:9,name:"Планшет",price:25990,img:"https://images.unsplash.com/photo-1542751110-97427bbecf20"},
+{id:10,name:"Колонка",price:7990,img:"https://images.unsplash.com/photo-1585386959984-a4155224a1ad"},
+{id:11,name:"Кофемашина",price:15990,img:"https://images.unsplash.com/photo-1511920170033-f8396924c348"},
+{id:12,name:"Фитнес браслет",price:3990,img:"https://images.unsplash.com/photo-1575311373937-040b8e1fd5b6"},
+{id:13,name:"Кресло",price:12990,img:"https://images.unsplash.com/photo-1505693416388-ac5ce068fe85"},
+{id:14,name:"Монитор",price:18990,img:"https://images.unsplash.com/photo-1527443224154-c4c0a0bcd2c3"},
+{id:15,name:"Клавиатура",price:4990,img:"https://images.unsplash.com/photo-1517336714731-489689fd1ca8"},
+{id:16,name:"Мышь",price:2990,img:"https://images.unsplash.com/photo-1587825140708-dfaf72ae4b04"},
+{id:17,name:"Лампа",price:2490,img:"https://images.unsplash.com/photo-1507473885765-e6ed057f782c"},
+{id:18,name:"Диван",price:45990,img:"https://images.unsplash.com/photo-1493666438817-866a91353ca9"},
+{id:19,name:"Телевизор",price:38990,img:"https://images.unsplash.com/photo-1593784991095-a205069470b6"},
+{id:20,name:"Камера",price:42990,img:"https://images.unsplash.com/photo-1516035069371-29a1b244cc32"},
+{id:21,name:"Игровая консоль",price:49990,img:"https://images.unsplash.com/photo-1606813907291-d86efa9b94db"}
+];
+
+const catalog = document.getElementById("catalog");
+
+function isFav(id){
+  return favorites.some(p=>p.id===id);
+}
+
+function render(){
+  catalog.innerHTML="";
+  products.forEach(p=>{
+    const card=document.createElement("div");
+    card.className="card";
+
+    const fav=document.createElement("div");
+    fav.className="fav";
+    fav.textContent=isFav(p.id)?"❤️":"♡";
+
+    fav.onclick=()=>{
+      if(isFav(p.id)){
+        favorites.splice(favorites.findIndex(x=>x.id===p.id),1);
+      } else {
+        favorites.push(p);
+      }
+      render();
+      updateFav();
+    };
+
+    const img=document.createElement("img");
+    img.src=p.img;
+
+    const body=document.createElement("div");
+    body.className="card-body";
+    body.innerHTML=`<h4>${p.name}</h4><div class="price">${p.price} ₽</div>`;
+
+    const btn=document.createElement("button");
+    btn.className="btn";
+    btn.textContent="Добавить";
+
+    btn.onclick=()=>{
+      cart.push(p);
+      updateCart();
+      btn.classList.add("added");
+      setTimeout(()=>btn.classList.remove("added"),300);
+    };
+
+    body.appendChild(btn);
+
+    card.appendChild(fav);
+    card.appendChild(img);
+    card.appendChild(body);
+    catalog.appendChild(card);
+  });
+}
+
+function updateCart(){
+  const cartItems=document.getElementById("cartItems");
+  const count=document.getElementById("count");
+  const totalEl=document.getElementById("total");
+  const finalTotal=document.getElementById("finalTotal");
+
+  count.textContent=cart.length;
+  cartItems.innerHTML="";
+
+  let total=0;
+  const map={};
+
+  cart.forEach(p=>{
+    if(!map[p.id]) map[p.id]={...p,qty:0};
+    map[p.id].qty++;
+  });
+
+  Object.values(map).forEach(item=>{
+    total+=item.price*item.qty;
+
+    const div=document.createElement("div");
+    div.className="cart-item";
+
+    const span=document.createElement("span");
+    span.textContent=`${item.name} — ${item.qty} шт.`;
+
+    const controls=document.createElement("div");
+    controls.className="controls";
+
+    const minus=document.createElement("button");
+    minus.textContent="−";
+
+    const plus=document.createElement("button");
+    plus.textContent="+";
+
+    minus.onclick=()=>{
+      cart.splice(cart.findIndex(x=>x.id===item.id),1);
+      updateCart();
+    };
+
+    plus.onclick=()=>{
+      cart.push(item);
+      updateCart();
+    };
+
+    controls.appendChild(minus);
+    controls.appendChild(plus);
+
+    div.appendChild(span);
+    div.appendChild(controls);
+    cartItems.appendChild(div);
+  });
+
+  totalEl.textContent="Итого: "+total+" ₽";
+  finalTotal.textContent="К оплате: "+total+" ₽";
+}
+
+function updateFav(){
+  document.getElementById("favItems").innerHTML=
+    favorites.map(p=>`<div>${p.name}</div>`).join("");
+}
+
+document.getElementById("cartBtn").onclick=()=>{
+  cartModal.classList.add("open");
+  overlay.classList.add("open");
+};
+
+document.getElementById("favBtn").onclick=()=>{
+  favModal.classList.add("open");
+  overlay.classList.add("open");
+};
+
+overlay.onclick=()=>{
+  cartModal.classList.remove("open");
+  favModal.classList.remove("open");
+  checkoutModal.classList.remove("open");
+  overlay.classList.remove("open");
+};
+
+document.getElementById("checkoutBtn").onclick=()=>{
+  checkoutModal.classList.add("open");
+};
+
+document.getElementById("submitOrder").onclick=()=>{
+  const name=document.getElementById("name").value;
+  const phone=document.getElementById("phone").value;
+  const address=document.getElementById("address").value;
+
+  if(!name||!phone||!address){
+    alert("Заполните все поля");
+    return;
+  }
+
+  alert("Заказ оформлен 🎉");
+  cart.length=0;
+  updateCart();
+
+  checkoutModal.classList.remove("open");
+  cartModal.classList.remove("open");
+  overlay.classList.remove("open");
+};
+
+render();
+</script>
+
+</body>
+</html>
